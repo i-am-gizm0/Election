@@ -161,12 +161,20 @@ app.get('/', async (req, res) => {
 app.get('/force', async (req, res) => {
     console.log(`\n-> ${req.method} ${req.url}`);
     console.time(`response`);
-    res.contentType('application/json');
 
-    await updateData();
+    if (new Date().getTime() - cachedData.source.cacheTimestamp > 5000) {
 
-    res.status(201);
-    res.send(cachedData);
+        res.contentType('application/json');
+
+        await updateData();
+
+        res.status(201);
+        res.send(cachedData);
+    } else {
+        res.status(304);
+        res.setHeader('Location', '/');
+        res.send();
+    }
 
     console.timeEnd(`response`);
     console.log(`<- ${res.statusCode}`);
