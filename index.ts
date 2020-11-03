@@ -3,15 +3,21 @@ import cheerio from 'cheerio';
 import fetch from 'node-fetch';
 import { parseDate } from 'chrono-node';
 import cron from 'node-cron';
+import readline from 'readline';
 
 import config from './config.json';
 
 const app = express();
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
 let cachedData: {
     college: {
         biden: number;
         trump: number;
+        remaining: number;
     };
     popular: {
         biden: number;
@@ -43,6 +49,8 @@ async function updateData() {
 
     const trumpCollege = parseInt($(config.remote.college.trump).text().split('\n')[1]);
     const trumpPopular = parseInt($(config.remote.popular.trump).text().substr(11).replace(/,/g, ''));
+
+    const collegeRemaining = parseInt($(config.remote.college.remaining).text());
 
     // <USA TODAY SPECIFIC>
     const map = $('#regions');
@@ -92,7 +100,8 @@ async function updateData() {
     cachedData = {
         college: {
             biden: bidenCollege,
-            trump: trumpCollege
+            trump: trumpCollege,
+            remaining: collegeRemaining
         },
         popular: {
             biden: bidenPopular,
@@ -115,10 +124,26 @@ updateData();
 console.log('Starting server...');
 const server = app.listen(parseInt(config.server.port), config.server.address, () => {
     console.log(`Listening on ${config.server.address}:${config.server.port}`);
+    ask();
 });
 
+function ask() {
+    rl.question('\n', answer => {
+        if (answer == 'stop') {
+            shutdown(true);
+        } else if (answer == 'restart') {
+            shutdown(false);
+        } else if (answer == 'update disable') {
+            schedule.stop();
+        } else if (answer == 'update enable') {
+            schedule.start();
+        }
+        ask();
+    });
+}
+
 app.get('/', async (req, res) => {
-    console.log(`-> ${req.method} ${req.url}`);
+    console.log(`\n-> ${req.method} ${req.url}`);
     console.time(`response`);
     res.contentType('application/json');
 
@@ -134,7 +159,7 @@ app.get('/', async (req, res) => {
 });
 
 app.get('/force', async (req, res) => {
-    console.log(`-> ${req.method} ${req.url}`);
+    console.log(`\n-> ${req.method} ${req.url}`);
     console.time(`response`);
     res.contentType('application/json');
 
@@ -152,7 +177,7 @@ app.get('/ping', (req, res) => {
 });
 
 app.get('/*', (req, res) => {
-    console.log(`-> ${req.method} ${req.url}`);
+    console.log(`\n-> ${req.method} ${req.url}`);
     res.status(404);
     res.send('Not Found');
     console.log(`<- ${res.statusCode}`);
@@ -161,12 +186,12 @@ app.get('/*', (req, res) => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-function shutdown() {
+function shutdown(really?:boolean) {
     console.log('Shutdown signal received');
     schedule.destroy();
     console.log('Updates stopped');
     server.close(() => {
         console.log('HTTP server closed');
-        process.exit(0);
+        process.exit(really ? 1 : 0);
     });
 }

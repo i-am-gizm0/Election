@@ -7,7 +7,8 @@
         "url": "https://www.usatoday.com/elections/results/2020-11-03/",
         "college": {
             "biden": ".results-pres-bop-cndte-detail.results-dem-detail",
-            "trump": ".results-pres-bop-cndte-detail.results-rep-detail"
+            "trump": ".results-pres-bop-cndte-detail.results-rep-detail",
+            "remaining": ".elctrl-rmn"
         },
         "popular": {
             "biden": ".results-pres-bop-pop-vote-cndte-left",
